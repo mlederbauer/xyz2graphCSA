@@ -1,5 +1,7 @@
 import plotly.graph_objs as go
 import networkx as nx
+import numpy as np
+from typing import List
 
 from xyz2graph import MolGraph
 
@@ -38,7 +40,7 @@ cpk_colors = dict(
 cpk_color_rest = "pink"
 
 
-def to_plotly_figure(graph: MolGraph, matrix: np.ndarray = np.empty((0, 0))) -> go.Figure:
+def to_plotly_figure(graph: MolGraph, matrix: np.ndarray = np.empty((0, 0)), start_atom_idx: int = 0) -> go.Figure:
     """Creates a Plotly figure."""
 
     def atom_trace():
@@ -82,29 +84,32 @@ def to_plotly_figure(graph: MolGraph, matrix: np.ndarray = np.empty((0, 0))) -> 
             trace["z"] += (graph.z[i], graph.z[j], None)
         return trace
     
-    def matrix_trace(matrix: np.ndarray) -> List[go.Scatter3d]:
-        """Creates a matrix trace for the plot."""
+    def matrix_trace(matrix: np.ndarray, start_atom_idx: int) -> List[go.Scatter3d]:
+            """Creates a matrix trace for the plot."""
 
-        if matrix.size == 0:
-            return []
+            if matrix.size == 0:
+                return []
+            
+            matrix = matrix / np.linalg.norm(matrix, axis=1, keepdims=True)
 
-        colors = ["red", "green", "blue"]
-        matrix_traces = []
+            colors = ["red", "green", "blue"]
+            matrix_traces = []
 
-        for i in range(matrix.shape[1]):
-            x, y, z = matrix[:, i]
-            trace = go.Scatter3d(
-                x=[0, x],
-                y=[0, y],
-                z=[0, z],
-                mode="lines",
-                line=dict(color=colors[i], width=5),
-                name=f"Matrix Vector {i + 1}",
-                showlegend=True,
-            )
-            matrix_traces.append(trace)
+            for i in range(matrix.shape[1]):
+                x0, y0, z0 = graph.x[start_atom_idx], graph.y[start_atom_idx], graph.z[start_atom_idx]
+                x, y, z = matrix[:, i]
+                trace = go.Scatter3d(
+                    x=[x0, x0 + x],
+                    y=[y0, y0 + y],
+                    z=[z0, z0 + z],
+                    mode="lines",
+                    line=dict(color=colors[i % len(colors)], width=5),
+                    name=f"Matrix Vector {i + 1}",
+                    showlegend=True,
+                )
+                matrix_traces.append(trace)
 
-        return matrix_traces
+            return matrix_traces
 
     annotations_elements = [
         dict(text=element, x=x, y=y, z=z, showarrow=False, yshift=15)
@@ -186,7 +191,7 @@ def to_plotly_figure(graph: MolGraph, matrix: np.ndarray = np.empty((0, 0))) -> 
         ]
     )
 
-    data = [atom_trace(), bond_trace()] + matrix_trace(matrix)
+    data = [atom_trace(), bond_trace()] + matrix_trace(matrix, start_atom_idx)
     axis_params = dict(
         showgrid=False,
         showbackground=False,
