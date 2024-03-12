@@ -1,5 +1,7 @@
 # xyz2graph
 
+**This project is archived and not maintained anymore.**
+
 FIXME add requirements file
 FIXME fix annotation of vectors
 TODO make optional to display CSA
